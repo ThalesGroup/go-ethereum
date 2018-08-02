@@ -22,6 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/accounts/hsmwallet"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/console"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -124,6 +125,22 @@ For non-interactive use the passphrase can be specified with the --password flag
 
 Note, this is meant to be used for testing only, it is a bad idea to save your
 password to file or expose in any other way.
+`,
+			},
+			{
+				Name:   "newhsm",
+				Usage:  "Create a new hsm account",
+				Action: utils.MigrateFlags(accountCreateHsm),
+				ArgsUsage: "<label>",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+				},
+				Description: `
+    geth account newhsm <label>
+
+Creates a new account on an HSM and prints the address.
+
+You will be prompted to enter the partition password.
 `,
 			},
 			{
@@ -313,6 +330,35 @@ func accountCreate(ctx *cli.Context) error {
 		utils.Fatalf("Failed to create account: %v", err)
 	}
 	fmt.Printf("Address: {%x}\n", address)
+	return nil
+}
+
+// accountCreateHsm creates a new account on an Hsm.
+func accountCreateHsm(ctx *cli.Context) error {
+	label := ctx.Args().First()
+	if len(label) == 0 {
+		utils.Fatalf("partition label must be given as argument")
+	}
+
+	stack, _ := makeConfigNode(ctx)
+	w, _ := stack.AccountManager().Wallet("hsm://" + label)
+	if w == nil {
+		utils.Fatalf("Failed to find Hsm wallet.")
+	}
+	hw, _ := w.(*hsmwallet.HsmWallet)
+
+	password := getPassPhrase("Please enter the partition password.", false, 0, utils.MakePasswordList(ctx))
+
+	err := hw.Open(password)
+	if err != nil {
+		utils.Fatalf("Failed to open Hsm wallet: %v", err)
+	}
+
+	account, err := hw.NewHsmAccount()
+	if err != nil {
+		utils.Fatalf("Failed to create account: %v", err)
+	}
+	fmt.Printf("Address: {%x}\n", account.Address)
 	return nil
 }
 

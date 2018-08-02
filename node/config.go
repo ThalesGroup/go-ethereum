@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/hsmwallet"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/common"
@@ -85,6 +86,9 @@ type Config struct {
 
 	// NoUSB disables hardware wallet monitoring and connectivity.
 	NoUSB bool `toml:",omitempty"`
+
+	// To use HSM Wallets specify the PKCS11 Library
+	PKCS11Lib string `toml:",omitempty"`
 
 	// IPCPath is the requested location to place the IPC endpoint. If the path is
 	// a simple file name, it is placed inside the data directory (or on the root
@@ -423,6 +427,18 @@ func makeAccountManager(conf *Config) (*accounts.Manager, string, error) {
 	// Assemble the account manager and supported backends
 	backends := []accounts.Backend{
 		keystore.NewKeyStore(keydir, scryptN, scryptP),
+	}
+	pkcs11Lib := os.Getenv("PKCS11_LIB")
+	if pkcs11Lib == "" {
+		pkcs11Lib = conf.PKCS11Lib
+	}
+	if pkcs11Lib != "" {
+		log.Info("PKCS11 Library", "lib", pkcs11Lib)
+		if hsm, err := hsmwallet.NewHsmBackend(pkcs11Lib); err != nil {
+			log.Warn(fmt.Sprintf("Failed to create hsm backend: %v", err))
+		} else {
+			backends = append(backends, hsm)
+		}
 	}
 	if !conf.NoUSB {
 		// Start a USB hub for Ledger hardware wallets

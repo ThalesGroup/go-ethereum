@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+
+
+  geth1:
+    container_name: geth1
+    image: geth
+    working_dir: "/"
+    environment:
+      - ChrystokiConfigurationPath=/etc/geth/lunaconf1
+    volumes:
+      - /usr/local/lunaclient:/usr/local/lunaclient
+      - /etc/geth/lunaconf1:/etc/geth/lunaconf1
+      - ./config.toml:/etc/geth/config.toml
+      - ./data1:/etc/geth/data
+      - ./ethash1:/etc/geth/ethash
+    ports:
+      - "30303"
+    networks:
+      vpcbr:
+        ipv4_address: 10.8.0.3
+
+
+
+  geth2:
+    container_name: geth2
+    image: geth
+    working_dir: "/"
+    environment:
+      - ChrystokiConfigurationPath=/etc/geth/lunaconf2
+    volumes:
+      - /usr/local/lunaclient:/usr/local/lunaclient
+      - /etc/geth/lunaconf2:/etc/geth/lunaconf2
+      - ./config.toml:/etc/geth/config.toml
+      - ./data2:/etc/geth/data
+      - ./ethash2:/etc/geth/ethash
+    ports:
+      - "30303"
+    networks:
+      vpcbr:
+        ipv4_address: 10.8.0.4
+
+
+networks:
+  vpcbr:
+    driver: bridge
+    ipam:
+      config:
+       - subnet: 10.8.0.0/16
+         gateway: 10.8.0.1
+
+      
+  

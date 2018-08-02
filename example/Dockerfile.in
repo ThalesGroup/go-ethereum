@@ -1,0 +1,8 @@
+FROM ubuntu:xenial
+
+RUN apt-get update && apt-get -y install libtool
+
+COPY geth /usr/bin
+
+CMD /usr/bin/geth --datadir /etc/geth/data --networkid 8000 --config /etc/geth/config.toml --port 30304 --ethash.dagdir /etc/geth/ethash
+
