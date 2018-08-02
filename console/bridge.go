@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/hsmwallet"
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -104,19 +105,27 @@ func (b *bridge) OpenWallet(call otto.FunctionCall) (response otto.Value) {
 	if err == nil {
 		return val
 	}
-	// Wallet open failed, report error unless it's a PIN entry
-	if !strings.HasSuffix(err.Error(), usbwallet.ErrTrezorPINNeeded.Error()) {
-		throwJSException(err.Error())
-	}
-	// Trezor PIN matrix input requested, display the matrix to the user and fetch the data
-	fmt.Fprintf(b.printer, "Look at the device for number positions\n\n")
-	fmt.Fprintf(b.printer, "7 | 8 | 9\n")
-	fmt.Fprintf(b.printer, "--+---+--\n")
-	fmt.Fprintf(b.printer, "4 | 5 | 6\n")
-	fmt.Fprintf(b.printer, "--+---+--\n")
-	fmt.Fprintf(b.printer, "1 | 2 | 3\n\n")
 
-	if input, err := b.prompter.PromptPassword("Please enter current PIN: "); err != nil {
+	var message = "Please enter current PIN: "
+
+	if strings.HasSuffix(err.Error(), hsmwallet.ErrHsmPINNeeded.Error()) {
+		message = "Please enter the partition password: "
+	} else {
+
+		// Wallet open failed, report error unless it's a PIN entry
+		if !strings.HasSuffix(err.Error(), usbwallet.ErrTrezorPINNeeded.Error()) {
+			throwJSException(err.Error())
+		}
+		// Trezor PIN matrix input requested, display the matrix to the user and fetch the data
+		fmt.Fprintf(b.printer, "Look at the device for number positions\n\n")
+		fmt.Fprintf(b.printer, "7 | 8 | 9\n")
+		fmt.Fprintf(b.printer, "--+---+--\n")
+		fmt.Fprintf(b.printer, "4 | 5 | 6\n")
+		fmt.Fprintf(b.printer, "--+---+--\n")
+		fmt.Fprintf(b.printer, "1 | 2 | 3\n\n")
+	}
+
+	if input, err := b.prompter.PromptPassword(message); err != nil {
 		throwJSException(err.Error())
 	} else {
 		passwd, _ = otto.ToValue(input)

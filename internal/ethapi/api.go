@@ -27,6 +27,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/hsmwallet"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -272,6 +273,14 @@ func (s *PrivateAccountAPI) OpenWallet(url string, passphrase *string) error {
 	return wallet.Open(pass)
 }
 
+func (s *PrivateAccountAPI) CloseWallet(url string) error {
+	wallet, err := s.am.Wallet(url)
+	if err != nil {
+		return err
+	}
+	return wallet.Close()
+}
+
 // DeriveAccount requests a HD wallet to derive a new account, optionally pinning
 // it for later reuse.
 func (s *PrivateAccountAPI) DeriveAccount(url string, path string, pin *bool) (accounts.Account, error) {
@@ -296,6 +305,20 @@ func (s *PrivateAccountAPI) NewAccount(password string) (common.Address, error) 
 		return acc.Address, nil
 	}
 	return common.Address{}, err
+}
+
+// NewAccount will create a new account and returns the address for the new account.
+func (s *PrivateAccountAPI) NewHsmAccount(url string) (accounts.Account, error) {
+	wallet, err := s.am.Wallet(url)
+	if err != nil {
+		return accounts.Account{}, err
+	}
+	hsmWallet, ok := wallet.(*hsmwallet.HsmWallet)
+	if ok {
+		return hsmWallet.NewHsmAccount()
+	}
+
+	return accounts.Account{}, fmt.Errorf("%s not an HSM Wallet", url)
 }
 
 // fetchKeystore retrives the encrypted keystore from the account manager.

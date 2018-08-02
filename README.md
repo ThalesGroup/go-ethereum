@@ -95,7 +95,7 @@ Specifying the `--testnet` flag however will reconfigure your Geth instance a bi
    `geth attach <datadir>/testnet/geth.ipc`. Windows users are not affected by this.
  * Instead of connecting the main Ethereum network, the client will connect to the test network,
    which uses different P2P bootnodes, different network IDs and genesis states.
-   
+
 *Note: Although there are some internal protective measures to prevent transactions from crossing
 over between the main network and test network, you should make sure to always use separate accounts
 for play-money and real-money. Unless you manually move accounts, Geth will by default correctly
@@ -276,6 +276,79 @@ $ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x000000000000000000000
 Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to
 the account specified by `--etherbase`. You can further tune the mining by changing the default gas
 limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
+
+## Using HSM Wallets
+
+Using the HSM Wallet implementation allows generating ECDSA key pairs for accounts in an HSM.
+The HSM can then be used to sign transactions using the private keys.
+The HSM Wallet uses the PKCS11 API to communicate with an HSM.
+
+Each PKCS11 slot/partition corresponds to a different HSM Wallet.  Each ECDSA key pair
+in the partition corresponds to an Account.
+
+### Configuration
+
+To configure PKCS11 add the following configuration:
+```
+[Node]
+.
+.
+.
+PKCS11Lib = "/usr/safenet/lunaclient/lib/libCryptoki2_64.so"
+```
+
+The library can also be configured by setting the `PKCS11_LIB` environment variable to point at the library.
+
+By default the HSM Wallet will use BIP32 in the HSM for deriving keys in an HD Wallet.
+To disable BIP32, add the following configuration:
+```
+[Node]
+.
+.
+.
+NoPKCS11BIP32 = true
+```
+
+### Opening HSM Wallet and Creating HSM Accounts
+
+In a console, first run `personal.listWallets`.  The HSM Wallet urls will be prefixed with `hsm://` and
+then be followed by the partition label.  There will be an HSM Wallet for each partition.
+
+Next run `personal.openWallet` passing in the url of the HSM Wallet.
+
+E.g.
+```
+personal.openWallet("hsm://geth1")
+```
+You will be prompted for the partition password.
+
+Once the HSM Wallet is `Open`, HSM Accounts can be created.
+
+E.g.
+```
+personal.newHsmAccount("hsm://geth1")
+```
+
+Transactions can be sent using the Accounts in the HSM Wallet when it is `Open`.
+
+The HSM Wallet can then be closed to prevent use of the Accounts.
+
+E.g.
+```
+personal.closeWallet("hsm://geth1")
+```
+
+HSM Accounts can also be created using the `geth` command outside of the node.
+```
+geth --config config.toml account newhsm <partition label>
+```
+
+If BIP32 is enabled and supported by the HSM, account keys can be derived.
+
+E.g.
+```
+personal.deriveAccount("hsm://geth1", "m/44'/60'/0'/0/0", true)
+```
 
 ## Contribution
 
